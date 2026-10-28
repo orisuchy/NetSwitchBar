@@ -1,6 +1,6 @@
 # 05 — Wi-Fi names, Location permission, and menu detail
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent
