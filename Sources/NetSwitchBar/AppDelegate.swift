@@ -28,9 +28,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { @MainActor in self?.apply(snapshot) }
         }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
-        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let ticker = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.deliver(self?.tracker.handle(.tick, at: ProcessInfo.processInfo.systemUptime) ?? []) }
         }
+        RunLoop.main.add(ticker, forMode: .common) // .common so ticks keep firing while the menu is open
         monitor.start(queue: DispatchQueue(label: "netswitchbar.path"))
     }
 
