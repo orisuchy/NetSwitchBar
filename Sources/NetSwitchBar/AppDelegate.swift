@@ -91,8 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private nonisolated static func reachesInternet() async -> Bool {
         var request = URLRequest(url: URL(string: "http://captive.apple.com/hotspot-detect.html")!, timeoutInterval: 5)
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
-        return (response as? HTTPURLResponse)?.statusCode == 200
+        guard let (data, response) = try? await URLSession.shared.data(for: request) else { return false }
+        // a captive portal answers 200 with its own page, so the body must be Apple's "Success" page
+        return (response as? HTTPURLResponse)?.statusCode == 200 && String(decoding: data, as: UTF8.self).contains("Success")
     }
 
     @objc private func toggleNotifications() {
