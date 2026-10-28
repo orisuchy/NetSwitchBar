@@ -1,6 +1,6 @@
 # 07 — Launch at Login and docs
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** haiku
 
 ## Parent
