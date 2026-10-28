@@ -2,9 +2,11 @@ public enum IconSpec: Equatable, Sendable {
     case symbol(String)
     case emoji(String)
 
-    /// Emoji if the text contains a non-ASCII emoji scalar (digits and `#` are emoji too, but never meant as one); otherwise an SF Symbol name.
+    /// Emoji if it is a single character with an emoji scalar (digits and `#` are emoji too, but only as keycaps with U+FE0F); otherwise an SF Symbol name.
     public init(parsing text: String) {
-        let isEmoji = text.unicodeScalars.contains { $0.properties.isEmojiPresentation || ($0.properties.isEmoji && $0.value > 0x7F) }
+        let isEmoji = text.count == 1 && text.unicodeScalars.contains {
+            $0.properties.isEmojiPresentation || ($0.properties.isEmoji && $0.value > 0x7F) || $0.value == 0xFE0F
+        }
         self = isEmoji ? .emoji(text) : .symbol(text)
     }
 }

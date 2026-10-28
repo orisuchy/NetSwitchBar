@@ -280,7 +280,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         setIconItem.isEnabled = IconKey(state: state, ssid: ssid) != nil
         switch IconResolver.icon(for: state, ssid: ssid, store: iconStore) {
         case .symbol(let name):
-            let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            // a stored name this macOS lacks must not leave the menu bar blank
+            let image = NSImage(systemSymbolName: name, accessibilityDescription: nil) ?? NSImage(systemSymbolName: "wifi", accessibilityDescription: nil)
             image?.isTemplate = true
             statusItem.button?.image = image
             statusItem.button?.title = ""

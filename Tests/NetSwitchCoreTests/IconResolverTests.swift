@@ -52,6 +52,9 @@ import Testing
         #expect(IconSpec(parsing: "briefcase") == .symbol("briefcase"))
         #expect(IconSpec(parsing: "wifi.circle") == .symbol("wifi.circle"))
         #expect(IconSpec(parsing: "1.circle") == .symbol("1.circle"))
+        #expect(IconSpec(parsing: "1️⃣") == .emoji("1️⃣"))
+        #expect(IconSpec(parsing: "👨‍👩‍👧") == .emoji("👨‍👩‍👧"))
+        #expect(IconSpec(parsing: "abc🏠") == .symbol("abc🏠"))
     }
 
     @Test func keyForCurrentConnection() {
