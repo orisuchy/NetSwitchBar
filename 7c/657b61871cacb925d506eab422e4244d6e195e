@@ -1,0 +1,23 @@
+Sources/NetSwitchBar/AppDelegate.swift
+  s_f83fbd622400a5::t_fa3603db283747 28
+  s_f83fbd622400a5::t_3302db684b8d46 65,68
+  s_f83fbd622400a5::t_db8b588558a9b3 206-215
+.scratch/netswitchbar/issues/07-launch-at-login-and-docs.md
+  s_f83fbd622400a5::t_a275634542eabd 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c657b61871cacb925d506eab422e4244d6e195e",
+  "prompts": {},
+  "sessions": {
+    "s_f83fbd622400a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5af8fb0-2ee9-4467-b795-100a834588a6",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
