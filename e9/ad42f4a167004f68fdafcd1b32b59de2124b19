@@ -1,0 +1,25 @@
+Sources/NetSwitchBar/AppDelegate.swift
+  s_4d955daf653b28::t_a0a97a0aed0093 2-3,7,15,18-20,22,34-38,47-51,53-58,75-118,175-177,187,199,205-206,215
+Tests/NetSwitchCoreTests/ConnectionTrackerTests.swift
+  s_4d955daf653b28::t_a5fe9098e0fa53 224-288
+Sources/NetSwitchCore/ConnectionTracker.swift
+  s_4d955daf653b28::t_a5fe9098e0fa53 35,53,55-56,72-79,81,106,123-124,131,135
+Resources/Info.plist
+  s_4d955daf653b28::t_c47ed179875e0e 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9ad42f4a167004f68fdafcd1b32b59de2124b19",
+  "prompts": {},
+  "sessions": {
+    "s_4d955daf653b28": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb8b9680-5def-4faa-be50-b409f3ff4c63",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
