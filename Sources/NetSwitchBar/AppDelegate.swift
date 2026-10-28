@@ -49,9 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard path.status == .satisfied else { return NetworkSnapshot(activeInterface: .none) }
         let ethernet = path.usesInterfaceType(.wiredEthernet)
         let wifi = path.usesInterfaceType(.wifi)
-        // First available interface is the preferred route.
-        let active: ActiveInterface = path.availableInterfaces.first.map {
-            $0.type == .wiredEthernet ? .ethernet : $0.type == .wifi ? .wifi : .none
+        // availableInterfaces is in preference order; take the first one the path actually uses.
+        let active: ActiveInterface = path.availableInterfaces.first { path.usesInterfaceType($0.type) }.map {
+            switch $0.type {
+            case .wiredEthernet: .ethernet
+            case .wifi: .wifi
+            default: .none // ponytail: VPN/tethering show as offline until a later ticket gives them an icon
+            }
         } ?? .none
         return NetworkSnapshot(activeInterface: active, ethernetLink: ethernet, wifiAssociated: wifi)
     }
