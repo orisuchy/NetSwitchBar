@@ -1,6 +1,6 @@
 # 03 — Flapping summary (Ethernet and Wi-Fi)
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent

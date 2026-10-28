@@ -1,6 +1,6 @@
 # 04 — No-internet detection
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent
