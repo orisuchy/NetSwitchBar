@@ -1,0 +1,35 @@
+Sources/NetSwitchCore/ConnectionTracker.swift
+  s_71ccf06d2668be::t_7514793ea917b4 52,70-71,83,88,101,110-115
+  s_71ccf06d2668be::t_ef8106b790d445 24,31,38,46,48-51,65-67,72,79-82,84-87,89-91
+Tests/NetSwitchCoreTests/IconResolverTests.swift
+  s_71ccf06d2668be::t_f21b35c94fae17 10-17
+Sources/NetSwitchBar/AppDelegate.swift
+  s_71ccf06d2668be::t_c01226249922a7 18-20,43-47,50,58-79,82-83,85-95,129
+  s_71ccf06d2668be::t_fa711a9f6edb8b 7-10,113-114,134
+  s_71ccf06d2668be::t_e7fe934060a28b 48-49
+  s_71ccf06d2668be::t_7514793ea917b4 21,80-81,84
+Sources/NetSwitchCore/IconResolver.swift
+  s_71ccf06d2668be::t_ef8106b790d445 12,15-17
+  s_71ccf06d2668be::t_1595c43c4c8fc3 18
+Tests/NetSwitchCoreTests/ConnectionTrackerTests.swift
+  s_71ccf06d2668be::t_5128b12fa3cebc 207
+  s_71ccf06d2668be::t_7514793ea917b4 210-221
+  s_71ccf06d2668be::t_f21b35c94fae17 147-206,208-209,222
+  s_71ccf06d2668be::t_72997b4ef06fe3 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c0e8bf6c911df0804ce12055242844dd397fc788",
+  "prompts": {},
+  "sessions": {
+    "s_71ccf06d2668be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "634825c8-260a-439f-89a7-5d46aa6ea906",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
