@@ -275,6 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
                 let text = field.stringValue.trimmingCharacters(in: .whitespaces)
                 guard Self.isValid(text) else {
                     updatePreview(field.stringValue)
+                    if text.isEmpty { errorLabel?.stringValue = "Enter an SF Symbol name or an emoji." }
                     continue
                 }
                 iconStore.setIcon(text, for: key)
