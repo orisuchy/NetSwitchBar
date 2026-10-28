@@ -1,0 +1,27 @@
+Sources/NetSwitchCore/IconResolver.swift
+  s_a672b573c3e9d6::t_132d59e1aae712 43-46
+  s_a672b573c3e9d6::t_9a104efb47c7c8 4-37,41-42,47,49-52
+.scratch/netswitchbar/issues/06-custom-icons.md
+  s_a672b573c3e9d6::t_733f06413730af 3
+Tests/NetSwitchCoreTests/IconResolverTests.swift
+  s_a672b573c3e9d6::t_132d59e1aae712 19-64
+Sources/NetSwitchBar/AppDelegate.swift
+  s_a672b573c3e9d6::t_124df09b0d566d 10-21,27,36-39,57-58,192-261,280-281,283-285
+  s_a672b573c3e9d6::t_733f06413730af 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c720092acd1647e0df896f2b60fdcd4cf61bde0",
+  "prompts": {},
+  "sessions": {
+    "s_a672b573c3e9d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bccfbff-d0fe-4808-adfd-391218475983",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
