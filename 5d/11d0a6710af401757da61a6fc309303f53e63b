@@ -1,0 +1,19 @@
+.scratch/netswitchbar/issues/07-launch-at-login-and-docs.md
+  s_f83fbd622400a5::t_8d26df38413bdc 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d11d0a6710af401757da61a6fc309303f53e63b",
+  "prompts": {},
+  "sessions": {
+    "s_f83fbd622400a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5af8fb0-2ee9-4467-b795-100a834588a6",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
