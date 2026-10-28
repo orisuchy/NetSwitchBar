@@ -1,0 +1,21 @@
+.scratch/netswitchbar/issues/03-flapping-summary.md
+  s_30c16cbd95496c::t_daaf4830b9860a 3
+.scratch/netswitchbar/issues/04-no-internet-detection.md
+  s_30c16cbd95496c::t_25b84ac8513af9 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "367c1baeb142fe0724ca01b3421d1375cb56a69d",
+  "prompts": {},
+  "sessions": {
+    "s_30c16cbd95496c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e572c241-118c-4ed4-b209-cce714ec3064",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
