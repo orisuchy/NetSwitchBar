@@ -9,6 +9,11 @@ public enum IconResolver {
         case .ethernet: .symbol("cable.connector")
         case .wifi: .symbol("wifi")
         case .offline: .symbol("wifi.slash")
+        case .noInternet(let interface): icon(for: interface == .ethernet ? .ethernet : .wifi(ssid: nil))
         }
+    }
+
+    public static func isDimmed(_ state: DisplayState) -> Bool {
+        if case .noInternet = state { true } else { false }
     }
 }

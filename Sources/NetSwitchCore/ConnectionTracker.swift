@@ -18,22 +18,24 @@ public struct NetworkSnapshot: Equatable, Sendable {
     }
 }
 
-/// `probe` and `tick` get added here by later tickets.
 public enum ConnectionEvent: Equatable, Sendable {
     case path(NetworkSnapshot)
     case tick
+    case probe(succeeded: Bool)
 }
 
 public enum DisplayState: Equatable, Sendable {
     case ethernet
     case wifi(ssid: String?)
     case offline
+    case noInternet(ActiveInterface)  // route exists, internet unreachable
 }
 
 public enum Alert: Equatable, Sendable {
     case switched(to: ActiveInterface)
     case offline
     case backOnline
+    case noInternet(ActiveInterface)
     case unstable(ActiveInterface, drops: Int)
 }
 
@@ -41,8 +43,13 @@ public struct ConnectionTracker: Sendable {
     public static let settleSeconds = 3.0
     public static let flapWindowSeconds = 60.0
     public static let flapThreshold = 3  // alert when drops exceed this within the window
+    public static let probeFailureThreshold = 2
 
-    public private(set) var displayState: DisplayState = .offline
+    public var displayState: DisplayState { noInternet ? .noInternet(current) : base }
+    private var base: DisplayState = .offline
+    private var noInternet = false
+    private var probeFailures = 0
+    private var noInternetPending = false  // alert owed; released once settled and not flapping
     private var current: ActiveInterface = .none
     private var announced: ActiveInterface?  // nil until the first path, so launch never alerts
     private var heldSince = 0.0
@@ -55,15 +62,31 @@ public struct ConnectionTracker: Sendable {
     public mutating func handle(_ event: ConnectionEvent, at time: Double) -> [Alert] {
         if case .path(let snapshot) = event {
             switch snapshot.activeInterface {
-            case .ethernet: displayState = .ethernet
-            case .wifi: displayState = .wifi(ssid: snapshot.ssid)
-            case .none: displayState = .offline
+            case .ethernet: base = .ethernet
+            case .wifi: base = .wifi(ssid: snapshot.ssid)
+            case .none: base = .offline
             }
             if snapshot.activeInterface != current || announced == nil {
+                noInternet = false
+                noInternetPending = false  // the new path gets probed afresh
+                probeFailures = 0
                 // a drop is losing or being demoted from an interface; Wi-Fi yielding to returning Ethernet is not one
                 if current != .none, announced != nil, !(current == .wifi && snapshot.activeInterface == .ethernet) { drops.append((current, time)) }
                 current = snapshot.activeInterface
                 heldSince = time
+            }
+        }
+        if case .probe(let succeeded) = event, current != .none {
+            if succeeded {
+                probeFailures = 0
+                noInternet = false
+                noInternetPending = false
+            } else {
+                probeFailures += 1
+                if probeFailures >= Self.probeFailureThreshold, !noInternet {
+                    noInternet = true
+                    noInternetPending = true
+                }
             }
         }
         guard let last = announced else {
@@ -75,7 +98,7 @@ public struct ConnectionTracker: Sendable {
             if drops.isEmpty, time - heldSince >= Self.settleSeconds {
                 flapping = false  // announced is still the pre-flap state, so a different outcome alerts normally
             }
-            return []
+            return []  // a pending noInternet alert waits; the dimmed icon still shows
         }
         for interface in [ActiveInterface.ethernet, .wifi] {
             let count = drops.filter { $0.interface == interface }.count
@@ -84,7 +107,12 @@ public struct ConnectionTracker: Sendable {
                 return [.unstable(interface, drops: count)]
             }
         }
-        guard current != last, time - heldSince >= Self.settleSeconds else { return [] }
+        guard current != last else {
+            guard noInternetPending else { return [] }
+            noInternetPending = false
+            return [.noInternet(current)]
+        }
+        guard time - heldSince >= Self.settleSeconds else { return [] }
         announced = current
         switch (last, current) {
         case (_, .none): return [.offline]

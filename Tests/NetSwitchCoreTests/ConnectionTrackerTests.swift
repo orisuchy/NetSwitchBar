@@ -144,3 +144,80 @@ private let none = NetworkSnapshot(activeInterface: .none)
         #expect(alerts == [.unstable(.ethernet, drops: 4)])
     }
 }
+
+@Suite struct NoInternetTests {
+    private func tracker(on s: NetworkSnapshot) -> ConnectionTracker {
+        var t = ConnectionTracker()
+        t.handle(.path(s), at: 0)
+        return t
+    }
+
+    @Test func oneFailureIsStillConnected() {
+        var t = tracker(on: wifi)
+        #expect(t.handle(.probe(succeeded: false), at: 10).isEmpty)
+        #expect(t.displayState == .wifi(ssid: nil))
+    }
+
+    @Test func twoFailuresRaiseNoInternetOnce() {
+        var t = tracker(on: wifi)
+        t.handle(.probe(succeeded: false), at: 10)
+        #expect(t.handle(.probe(succeeded: false), at: 40) == [.noInternet(.wifi)])
+        #expect(t.displayState == .noInternet(.wifi))
+        #expect(t.handle(.probe(succeeded: false), at: 70).isEmpty)
+    }
+
+    @Test func successBetweenFailuresResetsCount() {
+        var t = tracker(on: eth)
+        t.handle(.probe(succeeded: false), at: 10)
+        t.handle(.probe(succeeded: true), at: 40)
+        #expect(t.handle(.probe(succeeded: false), at: 70).isEmpty)
+        #expect(t.displayState == .ethernet)
+    }
+
+    @Test func successClearsNoInternet() {
+        var t = tracker(on: wifi)
+        t.handle(.probe(succeeded: false), at: 10)
+        t.handle(.probe(succeeded: false), at: 40)
+        t.handle(.probe(succeeded: true), at: 70)
+        #expect(t.displayState == .wifi(ssid: nil))
+    }
+
+    @Test func samePathUpdateKeepsNoInternet() {
+        var t = tracker(on: wifi)
+        t.handle(.probe(succeeded: false), at: 10)
+        t.handle(.probe(succeeded: false), at: 40)
+        t.handle(.path(wifi), at: 50)
+        #expect(t.displayState == .noInternet(.wifi))
+    }
+
+    @Test func interfaceChangeClearsNoInternet() {
+        var t = tracker(on: wifi)
+        t.handle(.probe(succeeded: false), at: 10)
+        t.handle(.probe(succeeded: false), at: 40)
+        t.handle(.path(eth), at: 50)
+        #expect(t.displayState == .ethernet)
+    }
+
+    @Test func probeResultsWhileOfflineAreIgnored() {
+        var t = tracker(on: none)
+        t.handle(.probe(succeeded: false), at: 10)
+        #expect(t.handle(.probe(succeeded: false), at: 40).isEmpty)
+        #expect(t.displayState == .offline)
+        t.handle(.path(wifi), at: 50)
+        t.handle(.tick, at: 53)  // drain the settled backOnline
+        #expect(t.handle(.probe(succeeded: false), at: 60).isEmpty)  // count restarted
+    }
+
+    @Test func alertDuringFlappingIsDeferredUntilItClears() {
+        var t = tracker(on: eth)
+        for i in 0..<5 {
+            t.handle(.path(none), at: Double(1 + 2 * i))
+            t.handle(.path(eth), at: Double(2 + 2 * i))
+        }
+        t.handle(.probe(succeeded: false), at: 11)
+        #expect(t.handle(.probe(succeeded: false), at: 12).isEmpty)
+        #expect(t.displayState == .noInternet(.ethernet))
+        #expect(t.handle(.tick, at: 70).isEmpty)  // flapping clears silently
+        #expect(t.handle(.tick, at: 71) == [.noInternet(.ethernet)])
+    }
+}
