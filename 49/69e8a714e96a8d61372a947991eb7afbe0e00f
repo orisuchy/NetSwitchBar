@@ -1,0 +1,49 @@
+.scratch/netswitchbar/spec.md
+  s_30c16cbd95496c::t_2a48b1fd87c5ac 1-106
+docs/agents/triage-labels.md
+  s_a1db7f0624c410::t_b657d04fe5891d 1-15
+docs/agents/domain.md
+  s_a1db7f0624c410::t_b657d04fe5891d 1-51
+docs/agents/issue-tracker.md
+  s_a1db7f0624c410::t_b657d04fe5891d 1-30
+CLAUDE.md
+  s_a1db7f0624c410::t_b657d04fe5891d 1-13
+.scratch/netswitchbar/issues/01-walking-skeleton.md
+  s_30c16cbd95496c::t_ec69a6275a7cca 1-34
+.scratch/netswitchbar/issues/02-change-notifications.md
+  s_30c16cbd95496c::t_a3bcc9397d6439 1-28
+.scratch/netswitchbar/issues/03-flapping-summary.md
+  s_30c16cbd95496c::t_775bead87d0446 1-25
+.scratch/netswitchbar/issues/04-no-internet-detection.md
+  s_30c16cbd95496c::t_8f2090cb33ef6a 1-29
+.scratch/netswitchbar/issues/05-wifi-names-and-detail.md
+  s_30c16cbd95496c::t_c9128070d11ae3 1-31
+.scratch/netswitchbar/issues/06-custom-icons.md
+  s_30c16cbd95496c::t_00976d7ea927fd 1-30
+.scratch/netswitchbar/issues/07-launch-at-login-and-docs.md
+  s_30c16cbd95496c::t_6fc89a65298cd7 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4969e8a714e96a8d61372a947991eb7afbe0e00f",
+  "prompts": {},
+  "sessions": {
+    "s_30c16cbd95496c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e572c241-118c-4ed4-b209-cce714ec3064",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    },
+    "s_a1db7f0624c410": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "932ef7b3-879e-4b9d-8b77-848efef54aa6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
