@@ -1,6 +1,6 @@
 # 06 — Custom icons per connection
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent

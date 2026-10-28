@@ -7,12 +7,24 @@ import NetSwitchCore
 import SystemConfiguration
 import UserNotifications
 
+private struct DefaultsIconStore: IconStore {
+    func icon(for key: IconKey) -> String? { UserDefaults.standard.string(forKey: Self.name(key)) }
+    func setIcon(_ icon: String?, for key: IconKey) { UserDefaults.standard.set(icon, forKey: Self.name(key)) }
+    private static func name(_ key: IconKey) -> String {
+        switch key {
+        case .ethernet: "icon.ethernet"
+        case .ssid(let s): "icon.ssid.\(s)"
+        case .unknownWifi: "icon.unknownWifi"
+        }
+    }
+}
+
 private extension ActiveInterface {
     var label: String { self == .ethernet ? "Ethernet" : "Wi-Fi" }
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDelegate, CWEventDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDelegate, CWEventDelegate, NSTextFieldDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let ethernetLine = NSMenuItem(title: "Ethernet: plugged in, not active", action: nil, keyEquivalent: "")
@@ -21,6 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
     private let monitor = NWPathMonitor()
     private var lastPath: (active: ActiveInterface, ethernet: Bool, wifi: Bool)?
     private var tracker = ConnectionTracker()
+    private let iconStore = DefaultsIconStore()
+    private let setIconItem = NSMenuItem(title: "Set icon for current connection…", action: #selector(setIcon), keyEquivalent: "")
+    private var ssid: String?
+    private var previewLabel: NSTextField?
     private let notificationsItem = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
     private var probeTimer: Timer?
     private var asleep = false
@@ -38,6 +54,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         locationItem.isHidden = true
         menu.addItem(locationItem)
         menu.addItem(.separator())
+        setIconItem.target = self
+        menu.addItem(setIconItem)
         notificationsItem.target = self
         notificationsItem.state = notificationsOn ? .on : .off
         menu.addItem(notificationsItem)
@@ -118,6 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
     }
 
     private func apply(_ snapshot: NetworkSnapshot) {
+        ssid = snapshot.ssid
         let alerts = tracker.handle(.path(snapshot), at: Date().timeIntervalSince1970)
         render(tracker.displayState)
         deliver(alerts)
@@ -170,6 +189,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         UserDefaults.standard.set(notificationsOn, forKey: "notificationsOn")
     }
 
+    @objc private func setIcon() {
+        guard let key = IconKey(state: tracker.displayState, ssid: ssid) else { return }
+        let target = switch key {
+        case .ethernet: "Ethernet"
+        case .ssid(let s): "Wi-Fi “\(s)”"
+        case .unknownWifi: "Wi-Fi without a known name"
+        }
+        let field = NSTextField(string: iconStore.icon(for: key) ?? "")
+        field.placeholderString = "SF Symbol name or emoji"
+        field.delegate = self
+        let preview = NSTextField(labelWithString: "")
+        preview.font = .systemFont(ofSize: 24)
+        previewLabel = preview
+        updatePreview(field.stringValue)
+        let stack = NSStackView(views: [field, preview])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.frame = NSRect(x: 0, y: 0, width: 260, height: 70)
+        field.widthAnchor.constraint(equalToConstant: 260).isActive = true
+
+        let alert = NSAlert()
+        alert.messageText = "Icon for \(target)"
+        alert.accessoryView = stack
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Reset to Default")
+        NSApp.activate(ignoringOtherApps: true)
+        while true {
+            switch alert.runModal() {
+            case .alertFirstButtonReturn:
+                let text = field.stringValue.trimmingCharacters(in: .whitespaces)
+                guard Self.isValid(text) else {
+                    alert.informativeText = text.isEmpty ? "Enter an SF Symbol name or an emoji." : "“\(text)” is not a known SF Symbol or emoji."
+                    continue
+                }
+                iconStore.setIcon(text, for: key)
+            case .alertThirdButtonReturn:
+                iconStore.setIcon(nil, for: key)
+            default: break
+            }
+            previewLabel = nil
+            render(tracker.displayState)
+            return
+        }
+    }
+
+    private static func isValid(_ text: String) -> Bool {
+        switch IconSpec(parsing: text) {
+        case .emoji: true
+        case .symbol(let name): !name.isEmpty && NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil
+        }
+    }
+
+    func controlTextDidChange(_ obj: Notification) {
+        updatePreview((obj.object as? NSTextField)?.stringValue ?? "")
+    }
+
+    private func updatePreview(_ raw: String) {
+        let text = raw.trimmingCharacters(in: .whitespaces)
+        previewLabel?.attributedStringValue = NSAttributedString()
+        guard Self.isValid(text) else { previewLabel?.stringValue = "–"; return }
+        switch IconSpec(parsing: text) {
+        case .emoji(let e): previewLabel?.stringValue = e
+        case .symbol(let name):
+            let attachment = NSTextAttachment()
+            attachment.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            previewLabel?.attributedStringValue = NSAttributedString(attachment: attachment)
+        }
+    }
+
     private func deliver(_ alerts: [Alert]) {
         guard notificationsOn else { return }
         for alert in alerts {
@@ -188,9 +277,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
 
     private func render(_ state: DisplayState) {
         ethernetLine.isHidden = !tracker.ethernetPluggedNotActive
-        switch IconResolver.icon(for: state) {
+        setIconItem.isEnabled = IconKey(state: state, ssid: ssid) != nil
+        switch IconResolver.icon(for: state, ssid: ssid, store: iconStore) {
         case .symbol(let name):
-            statusItem.button?.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+            image?.isTemplate = true
+            statusItem.button?.image = image
             statusItem.button?.title = ""
         case .emoji(let text):
             statusItem.button?.image = nil
