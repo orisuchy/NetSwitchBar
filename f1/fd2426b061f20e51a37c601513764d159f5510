@@ -1,0 +1,19 @@
+Sources/NetSwitchBar/AppDelegate.swift
+  s_315eb80402b321::t_cdbbe8fcfb66e6 31,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1fd2426b061f20e51a37c601513764d159f5510",
+  "prompts": {},
+  "sessions": {
+    "s_315eb80402b321": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e71f3f9b-0580-4320-8c12-d912c22f50a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
