@@ -38,6 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
     private let setIconItem = NSMenuItem(title: "Set icon for current connection…", action: #selector(setIcon), keyEquivalent: "")
     private var ssid: String?
     private var previewLabel: NSTextField?
+    private var errorLabel: NSTextField?
+    private var iconField: NSTextField?
+    private var pickerPopover: NSPopover?
+    private var pickerSearch: NSSearchField?
+    private var pickerGrid: NSStackView?
+    private let availableSymbols = IconCatalog.symbols.filter { NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil }
     private let notificationsItem = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
     private let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
     private var probeTimer: Timer?
@@ -241,10 +247,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
         preview.font = .systemFont(ofSize: 24)
         previewLabel = preview
         updatePreview(field.stringValue)
-        let stack = NSStackView(views: [field, preview])
+        iconField = field
+        let error = NSTextField(wrappingLabelWithString: "")
+        error.textColor = .systemRed
+        error.preferredMaxLayoutWidth = 260
+        errorLabel = error
+        let choose = NSButton(title: "Choose icon…", target: self, action: #selector(chooseIcon(_:)))
+        let emoji = NSButton(title: "Emoji…", target: self, action: #selector(chooseEmoji))
+        let buttons = NSStackView(views: [choose, emoji, preview])
+        buttons.spacing = 8
+        let stack = NSStackView(views: [field, buttons, error])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.frame = NSRect(x: 0, y: 0, width: 260, height: 70)
+        stack.frame = NSRect(x: 0, y: 0, width: 260, height: 112)
         field.widthAnchor.constraint(equalToConstant: 260).isActive = true
 
         let alert = NSAlert()
@@ -259,7 +274,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
             case .alertFirstButtonReturn:
                 let text = field.stringValue.trimmingCharacters(in: .whitespaces)
                 guard Self.isValid(text) else {
-                    alert.informativeText = text.isEmpty ? "Enter an SF Symbol name or an emoji." : "“\(text)” is not a known SF Symbol or emoji."
+                    updatePreview(field.stringValue)
                     continue
                 }
                 iconStore.setIcon(text, for: key)
@@ -267,10 +282,83 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
                 iconStore.setIcon(nil, for: key)
             default: break
             }
+            pickerPopover?.close()
             previewLabel = nil
+            errorLabel = nil
+            iconField = nil
             render(tracker.displayState)
             return
         }
+    }
+
+    @objc private func chooseEmoji() {
+        guard let field = iconField else { return }
+        field.window?.makeFirstResponder(field)
+        NSApp.orderFrontCharacterPalette(field)
+    }
+
+    @objc private func chooseIcon(_ sender: NSButton) {
+        if let popover = pickerPopover, popover.isShown { popover.close(); return }
+        let search = NSSearchField()
+        search.placeholderString = "Search"
+        search.target = self
+        search.action = #selector(pickerSearchChanged)
+        let grid = NSStackView()
+        grid.orientation = .vertical
+        grid.alignment = .leading
+        grid.spacing = 2
+        let scroll = NSScrollView()
+        scroll.documentView = grid
+        scroll.hasVerticalScroller = true
+        scroll.drawsBackground = false
+        let content = NSStackView(views: [search, scroll])
+        content.orientation = .vertical
+        content.edgeInsets = NSEdgeInsets(top: 10, left: 10, bottom: 10, right: 10)
+        content.frame = NSRect(x: 0, y: 0, width: 330, height: 320)
+        scroll.widthAnchor.constraint(equalToConstant: 310).isActive = true
+        scroll.heightAnchor.constraint(equalToConstant: 260).isActive = true
+        search.widthAnchor.constraint(equalToConstant: 310).isActive = true
+        let controller = NSViewController()
+        controller.view = content
+        let popover = NSPopover()
+        popover.contentViewController = controller
+        popover.behavior = .transient
+        pickerPopover = popover
+        pickerSearch = search
+        pickerGrid = grid
+        fillPicker("")
+        popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .maxY)
+    }
+
+    @objc private func pickerSearchChanged() { fillPicker(pickerSearch?.stringValue ?? "") }
+
+    private func fillPicker(_ query: String) {
+        guard let grid = pickerGrid else { return }
+        grid.views.forEach { $0.removeFromSuperview() }
+        let names = IconCatalog.filter(availableSymbols, query: query)
+        for row in stride(from: 0, to: names.count, by: 7) {
+            let buttons = names[row..<min(row + 7, names.count)].map { name -> NSButton in
+                let b = NSButton(image: NSImage(systemSymbolName: name, accessibilityDescription: name)!, target: self, action: #selector(pickSymbol(_:)))
+                b.bezelStyle = .texturedRounded
+                b.toolTip = name
+                b.identifier = NSUserInterfaceItemIdentifier(name)
+                b.widthAnchor.constraint(equalToConstant: 40).isActive = true
+                b.heightAnchor.constraint(equalToConstant: 32).isActive = true
+                return b
+            }
+            let line = NSStackView(views: buttons)
+            line.spacing = 2
+            grid.addArrangedSubview(line)
+        }
+        grid.layoutSubtreeIfNeeded()
+        grid.frame = NSRect(origin: .zero, size: grid.fittingSize)
+    }
+
+    @objc private func pickSymbol(_ sender: NSButton) {
+        guard let name = sender.identifier?.rawValue, let field = iconField else { return }
+        field.stringValue = name
+        updatePreview(name)
+        pickerPopover?.close()
     }
 
     private static func isValid(_ text: String) -> Bool {
@@ -287,6 +375,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLoca
     private func updatePreview(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespaces)
         previewLabel?.attributedStringValue = NSAttributedString()
+        errorLabel?.stringValue = Self.isValid(text) || text.isEmpty ? "" : "“\(text)” is not a known SF Symbol or emoji."
         guard Self.isValid(text) else { previewLabel?.stringValue = "–"; return }
         switch IconSpec(parsing: text) {
         case .emoji(let e): previewLabel?.stringValue = e

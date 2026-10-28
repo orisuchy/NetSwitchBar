@@ -65,3 +65,17 @@ import Testing
         #expect(IconKey(state: .offline) == nil)
     }
 }
+
+@Suite struct IconCatalogTests {
+    @Test func filterMatchesSubstringCaseInsensitively() {
+        let all = IconCatalog.symbols
+        #expect(IconCatalog.filter(all, query: "") == all)
+        #expect(IconCatalog.filter(all, query: "  ") == all)
+        #expect(IconCatalog.filter(all, query: "HOUSE").contains("house.fill"))
+        #expect(IconCatalog.filter(all, query: "zzzz").isEmpty)
+    }
+
+    @Test func catalogHasNoDuplicates() {
+        #expect(Set(IconCatalog.symbols).count == IconCatalog.symbols.count)
+    }
+}

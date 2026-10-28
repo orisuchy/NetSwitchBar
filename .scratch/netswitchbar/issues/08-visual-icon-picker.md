@@ -1,6 +1,6 @@
 # 08 — Visual icon picker in the "Set icon" dialog
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent
