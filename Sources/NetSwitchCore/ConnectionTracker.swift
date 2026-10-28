@@ -44,6 +44,7 @@ public struct ConnectionTracker: Sendable {
     public static let flapWindowSeconds = 60.0
     public static let flapThreshold = 3  // alert when drops exceed this within the window
     public static let probeFailureThreshold = 2
+    public static let ssidGraceSeconds = 5.0  // extra wait for a switch to Wi-Fi whose SSID isn't readable yet
 
     public var displayState: DisplayState { noInternet ? .noInternet(current) : base }
     private var base: DisplayState = .offline
@@ -126,7 +127,8 @@ public struct ConnectionTracker: Sendable {
             noInternetPending = false
             return [.noInternet(current)]
         }
-        guard time - heldSince >= Self.settleSeconds else { return [] }
+        let awaitingSSID = current == .wifi && currentSSID == nil && last == .ethernet
+        guard time - heldSince >= Self.settleSeconds + (awaitingSSID ? Self.ssidGraceSeconds : 0) else { return [] }
         announced = current
         announcedSSID = currentSSID
         switch (last, current) {

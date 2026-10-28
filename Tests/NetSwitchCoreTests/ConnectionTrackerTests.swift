@@ -37,7 +37,7 @@ private func state(after snapshot: NetworkSnapshot) -> DisplayState {
 }
 
 private let eth = NetworkSnapshot(activeInterface: .ethernet, ethernetLink: true)
-private let wifi = NetworkSnapshot(activeInterface: .wifi, wifiAssociated: true)
+private let wifi = NetworkSnapshot(activeInterface: .wifi, wifiAssociated: true, ssid: "Office")
 private let none = NetworkSnapshot(activeInterface: .none)
 
 @Suite struct SettleAlertTests {
@@ -51,7 +51,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
         var t = tracker(on: eth)
         #expect(t.handle(.path(wifi), at: 10).isEmpty)
         #expect(t.handle(.tick, at: 12.9).isEmpty)
-        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi)])
+        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: "Office")])
         #expect(t.handle(.tick, at: 20).isEmpty)
     }
 
@@ -73,7 +73,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
     @Test func iconUpdatesBeforeSettle() {
         var t = tracker(on: eth)
         t.handle(.path(wifi), at: 10)
-        #expect(t.displayState == .wifi(ssid: nil))
+        #expect(t.displayState == .wifi(ssid: "Office"))
     }
 
     @Test func launchDoesNotAlert() {
@@ -122,7 +122,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
         #expect(t.handle(.tick, at: 30).isEmpty)  // still inside the window
         #expect(t.handle(.tick, at: 80).isEmpty)  // clears silently
         t.handle(.path(wifi), at: 90)
-        #expect(t.handle(.tick, at: 93) == [.switched(to: .wifi)])
+        #expect(t.handle(.tick, at: 93) == [.switched(to: .wifi, ssid: "Office")])
     }
 
     @Test func flapEndingOnDifferentInterfaceIsAnnounced() {
@@ -131,7 +131,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
         t.handle(.path(wifi), at: 20)
         #expect(t.handle(.tick, at: 30).isEmpty)  // suppressed while the window is open
         #expect(t.handle(.tick, at: 81).isEmpty)  // the t=20 switch was a drop too; window clears here
-        #expect(t.handle(.tick, at: 82) == [.switched(to: .wifi)])
+        #expect(t.handle(.tick, at: 82) == [.switched(to: .wifi, ssid: "Office")])
     }
 
     @Test func ethernetFlapViaWifiDoesNotRaiseWifiAlert() {
@@ -155,7 +155,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
     @Test func oneFailureIsStillConnected() {
         var t = tracker(on: wifi)
         #expect(t.handle(.probe(succeeded: false), at: 10).isEmpty)
-        #expect(t.displayState == .wifi(ssid: nil))
+        #expect(t.displayState == .wifi(ssid: "Office"))
     }
 
     @Test func twoFailuresRaiseNoInternetOnce() {
@@ -179,7 +179,7 @@ private let none = NetworkSnapshot(activeInterface: .none)
         t.handle(.probe(succeeded: false), at: 10)
         t.handle(.probe(succeeded: false), at: 40)
         t.handle(.probe(succeeded: true), at: 70)
-        #expect(t.displayState == .wifi(ssid: nil))
+        #expect(t.displayState == .wifi(ssid: "Office"))
     }
 
     @Test func samePathUpdateKeepsNoInternet() {
@@ -234,11 +234,20 @@ private let none = NetworkSnapshot(activeInterface: .none)
         #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: "Office-5G")])
     }
 
-    @Test func nilSSIDSwitchStillAlerts() {
+    @Test func nilSSIDSwitchWaitsThenAlertsNameless() {
         var t = ConnectionTracker()
         t.handle(.path(eth), at: 0)
         t.handle(.path(wifi(nil)), at: 10)
-        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: nil)])
+        #expect(t.handle(.tick, at: 17.9).isEmpty)
+        #expect(t.handle(.tick, at: 18) == [.switched(to: .wifi, ssid: nil)])
+    }
+
+    @Test func nilSSIDSwitchSendsNameIfItArrivesInGrace() {
+        var t = ConnectionTracker()
+        t.handle(.path(eth), at: 0)
+        t.handle(.path(wifi(nil)), at: 10)
+        #expect(t.handle(.tick, at: 13).isEmpty)
+        #expect(t.handle(.path(wifi("Office-5G")), at: 14) == [.switched(to: .wifi, ssid: "Office-5G")])
     }
 
     @Test func ssidChangeWhileEthernetActiveIsSilent() {

@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
     private var probeTimer: Timer?
     private var asleep = false
     private var routeUp = false
+    private var lastActive: ActiveInterface?
     private var probeGeneration = 0  // newest probe wins; older results are stale
     private var notificationsOn = UserDefaults.standard.object(forKey: "notificationsOn") as? Bool ?? true
 
@@ -120,8 +121,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         let alerts = tracker.handle(.path(snapshot), at: Date().timeIntervalSince1970)
         render(tracker.displayState)
         deliver(alerts)
+        let routeChanged = snapshot.activeInterface != lastActive
+        lastActive = snapshot.activeInterface
         routeUp = snapshot.activeInterface != .none
-        updateProbing(probeNow: true)
+        updateProbing(probeNow: routeChanged)  // SSID and Location updates don't warrant a probe
     }
 
     /// Probe every 30 s while a route exists and the Mac is awake; never while offline or asleep.
