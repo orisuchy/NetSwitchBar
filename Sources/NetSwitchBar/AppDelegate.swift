@@ -25,7 +25,7 @@ private extension ActiveInterface {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDelegate, CWEventDelegate, NSTextFieldDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, CLLocationManagerDelegate, CWEventDelegate, NSTextFieldDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let ethernetLine = NSMenuItem(title: "Ethernet: plugged in, not active", action: nil, keyEquivalent: "")
@@ -62,9 +62,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         notificationsItem.state = notificationsOn ? .on : .off
         menu.addItem(notificationsItem)
         launchAtLoginItem.target = self
-        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        refreshLaunchAtLoginState()
         menu.addItem(launchAtLoginItem)
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.delegate = self
         statusItem.menu = menu
         Task { @MainActor in self.showFirstLaunchHintOnce() }
 
@@ -202,7 +203,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         } catch {
             NSLog("Launch at Login change failed: \(error.localizedDescription)")
         }
-        launchAtLoginItem.state = service.status == .enabled ? .on : .off  // show what macOS actually did
+        refreshLaunchAtLoginState()  // show what macOS actually did
+    }
+
+    private func refreshLaunchAtLoginState() {
+        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+    }
+
+    // Re-read on open: the login item can also change in System Settings → Login Items.
+    func menuWillOpen(_ menu: NSMenu) {
+        refreshLaunchAtLoginState()
     }
 
     private func showFirstLaunchHintOnce() {

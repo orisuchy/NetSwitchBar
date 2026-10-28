@@ -18,7 +18,7 @@ Parent: `.scratch/netswitchbar/spec.md`
 - [ ] Launch at Login toggle registers/unregisters and the checkmark reflects real status after restart.
 - [ ] README covers all items above.
 - [ ] First-launch hint appears exactly once.
-- [ ] `make test` and `make app` pass.
+- [x] `make test` and `make app` pass.
 
 ## Blocked by
 
