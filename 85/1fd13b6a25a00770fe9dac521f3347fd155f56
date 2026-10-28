@@ -1,0 +1,26 @@
+Sources/NetSwitchBar/AppDelegate.swift
+  s_7b092c6008965f::t_029125bfbd0d36 41-46,250-259,262,277,285,287-288,294-363,378
+Sources/NetSwitchCore/IconCatalog.swift
+  s_7b092c6008965f::t_08f05b812527b2 2-24
+  s_7b092c6008965f::t_2d967af493924b 1
+Tests/NetSwitchCoreTests/IconResolverTests.swift
+  s_7b092c6008965f::t_31a6fc7e9dcff3 68-81
+.scratch/netswitchbar/issues/08-visual-icon-picker.md
+  s_7b092c6008965f::t_5a7dcb2b9f26cf 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "851fd13b6a25a00770fe9dac521f3347fd155f56",
+  "prompts": {},
+  "sessions": {
+    "s_7b092c6008965f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73f9df62-d9d2-4b37-9a09-561192966394",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
