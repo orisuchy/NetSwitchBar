@@ -1,0 +1,25 @@
+Tests/NetSwitchCoreTests/ConnectionTrackerTests.swift
+  s_315eb80402b321::t_0f60ba6079ad6e 38-84
+Sources/NetSwitchBar/AppDelegate.swift
+  s_315eb80402b321::t_5b822305a0a33d 5,13-14,20-22,30-33,38,40-60
+Sources/NetSwitchCore/ConnectionTracker.swift
+  s_315eb80402b321::t_0f60ba6079ad6e 24,33-38,40-41,43-45,49-51,57-71
+.scratch/netswitchbar/issues/02-change-notifications.md
+  s_315eb80402b321::t_a6809914231c8b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd8d111375e4cb2d3adc45ce8001786caf68fd3f",
+  "prompts": {},
+  "sessions": {
+    "s_315eb80402b321": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e71f3f9b-0580-4320-8c12-d912c22f50a5",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
