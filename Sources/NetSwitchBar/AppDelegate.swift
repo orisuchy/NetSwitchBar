@@ -29,14 +29,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
         let ticker = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.deliver(self?.tracker.handle(.tick, at: ProcessInfo.processInfo.systemUptime) ?? []) }
+            Task { @MainActor in self?.deliver(self?.tracker.handle(.tick, at: Date().timeIntervalSince1970) ?? []) }
         }
         RunLoop.main.add(ticker, forMode: .common) // .common so ticks keep firing while the menu is open
         monitor.start(queue: DispatchQueue(label: "netswitchbar.path"))
     }
 
     private func apply(_ snapshot: NetworkSnapshot) {
-        let alerts = tracker.handle(.path(snapshot), at: ProcessInfo.processInfo.systemUptime)
+        let alerts = tracker.handle(.path(snapshot), at: Date().timeIntervalSince1970)
         render(tracker.displayState)
         deliver(alerts)
     }
@@ -56,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .switched(.ethernet): "Back on Ethernet"
             case .switched(.none), .offline: "Offline"
             case .backOnline: "Back online"
+            case .unstable(let interface, let drops): "\(interface == .ethernet ? "Ethernet" : "Wi-Fi") unstable: \(drops) drops in the last minute"
             }
             UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
         }

@@ -34,15 +34,20 @@ public enum Alert: Equatable, Sendable {
     case switched(to: ActiveInterface)
     case offline
     case backOnline
+    case unstable(ActiveInterface, drops: Int)
 }
 
 public struct ConnectionTracker: Sendable {
     public static let settleSeconds = 3.0
+    public static let flapWindowSeconds = 60.0
+    public static let flapThreshold = 3  // alert when drops exceed this within the window
 
     public private(set) var displayState: DisplayState = .offline
     private var current: ActiveInterface = .none
     private var announced: ActiveInterface?  // nil until the first path, so launch never alerts
     private var heldSince = 0.0
+    private var drops: [(interface: ActiveInterface, time: Double)] = []
+    private var flapping = false
 
     public init() {}
 
@@ -55,6 +60,8 @@ public struct ConnectionTracker: Sendable {
             case .none: displayState = .offline
             }
             if snapshot.activeInterface != current || announced == nil {
+                // a drop is losing or being demoted from an interface; Wi-Fi yielding to returning Ethernet is not one
+                if current != .none, announced != nil, !(current == .wifi && snapshot.activeInterface == .ethernet) { drops.append((current, time)) }
                 current = snapshot.activeInterface
                 heldSince = time
             }
@@ -62,6 +69,20 @@ public struct ConnectionTracker: Sendable {
         guard let last = announced else {
             announced = current
             return []
+        }
+        drops.removeAll { time - $0.time > Self.flapWindowSeconds }
+        if flapping {
+            if drops.isEmpty, time - heldSince >= Self.settleSeconds {
+                flapping = false  // announced is still the pre-flap state, so a different outcome alerts normally
+            }
+            return []
+        }
+        for interface in [ActiveInterface.ethernet, .wifi] {
+            let count = drops.filter { $0.interface == interface }.count
+            if count > Self.flapThreshold {
+                flapping = true
+                return [.unstable(interface, drops: count)]
+            }
         }
         guard current != last, time - heldSince >= Self.settleSeconds else { return [] }
         announced = current

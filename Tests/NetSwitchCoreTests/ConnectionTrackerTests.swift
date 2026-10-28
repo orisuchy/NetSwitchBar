@@ -82,3 +82,65 @@ private let none = NetworkSnapshot(activeInterface: .none)
         #expect(t.handle(.tick, at: 10).isEmpty)
     }
 }
+
+@Suite struct FlappingTests {
+    /// Drops `base` to `none` and recovers each second, starting at t=1.
+    private func flap(_ t: inout ConnectionTracker, from base: NetworkSnapshot, drops: Int) -> [Alert] {
+        var alerts: [Alert] = []
+        for i in 0..<drops {
+            alerts += t.handle(.path(none), at: Double(1 + 2 * i))
+            alerts += t.handle(.path(base), at: Double(2 + 2 * i))
+        }
+        return alerts
+    }
+
+    private func tracker(on s: NetworkSnapshot) -> ConnectionTracker {
+        var t = ConnectionTracker()
+        t.handle(.path(s), at: 0)
+        return t
+    }
+
+    @Test func ethernetFlapAlertsOnce() {
+        var t = tracker(on: eth)
+        #expect(flap(&t, from: eth, drops: 5) == [.unstable(.ethernet, drops: 4)])
+    }
+
+    @Test func wifiFlapAlertsOnce() {
+        var t = tracker(on: wifi)
+        #expect(flap(&t, from: wifi, drops: 5) == [.unstable(.wifi, drops: 4)])
+    }
+
+    @Test func threeDropsIsNotUnstable() {
+        var t = tracker(on: eth)
+        #expect(flap(&t, from: eth, drops: 3).isEmpty)
+        #expect(t.handle(.tick, at: 20).isEmpty)
+    }
+
+    @Test func normalAlertsResumeAfterWindowClears() {
+        var t = tracker(on: eth)
+        _ = flap(&t, from: eth, drops: 4)
+        #expect(t.handle(.tick, at: 30).isEmpty)  // still inside the window
+        #expect(t.handle(.tick, at: 80).isEmpty)  // clears silently
+        t.handle(.path(wifi), at: 90)
+        #expect(t.handle(.tick, at: 93) == [.switched(to: .wifi)])
+    }
+
+    @Test func flapEndingOnDifferentInterfaceIsAnnounced() {
+        var t = tracker(on: eth)
+        _ = flap(&t, from: eth, drops: 4)
+        t.handle(.path(wifi), at: 20)
+        #expect(t.handle(.tick, at: 30).isEmpty)  // suppressed while the window is open
+        #expect(t.handle(.tick, at: 81).isEmpty)  // the t=20 switch was a drop too; window clears here
+        #expect(t.handle(.tick, at: 82) == [.switched(to: .wifi)])
+    }
+
+    @Test func ethernetFlapViaWifiDoesNotRaiseWifiAlert() {
+        var t = tracker(on: eth)
+        var alerts: [Alert] = []
+        for i in 0..<5 {
+            alerts += t.handle(.path(wifi), at: Double(1 + 2 * i))
+            alerts += t.handle(.path(eth), at: Double(2 + 2 * i))
+        }
+        #expect(alerts == [.unstable(.ethernet, drops: 4)])
+    }
+}
