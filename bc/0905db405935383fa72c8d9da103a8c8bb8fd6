@@ -1,0 +1,23 @@
+Sources/NetSwitchBar/AppDelegate.swift
+  s_a672b573c3e9d6::t_53ddae0e176ec2 283-284
+Tests/NetSwitchCoreTests/IconResolverTests.swift
+  s_a672b573c3e9d6::t_53ddae0e176ec2 55-57
+Sources/NetSwitchCore/IconResolver.swift
+  s_a672b573c3e9d6::t_53ddae0e176ec2 5,7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc0905db405935383fa72c8d9da103a8c8bb8fd6",
+  "prompts": {},
+  "sessions": {
+    "s_a672b573c3e9d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bccfbff-d0fe-4808-adfd-391218475983",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "ori.suchy <ori.suchy@coro.net>"
+    }
+  }
+}
