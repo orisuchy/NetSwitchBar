@@ -29,3 +29,7 @@ The app knows which Wi-Fi network it's on and shows more detail in the menu.
 ## Blocked by
 
 - 02-change-notifications
+
+## Comments
+
+- From ticket 01: ethernetLink and wifiAssociated are currently derived from "path uses this interface", not real link/association state. This ticket must supply real values (Ethernet link status, CoreWLAN association) for the plugged-in-but-not-active hint.

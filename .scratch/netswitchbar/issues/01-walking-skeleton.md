@@ -1,6 +1,6 @@
 # 01 — Walking skeleton: active-route icon in the menu bar
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent

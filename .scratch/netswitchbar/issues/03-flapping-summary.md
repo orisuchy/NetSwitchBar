@@ -23,3 +23,7 @@ When a connection flaps, the user gets one summary notification instead of a str
 ## Blocked by
 
 - 02-change-notifications
+
+## Comments
+
+- From ticket 01: the core uses Double-second timestamps (Swift Testing cannot import Foundation alongside Testing with Command Line Tools only). The app clock currently uses systemUptime, which stops during sleep. For the 60 s flapping window, use a clock that keeps running through sleep (e.g. wall-clock or continuous time).
