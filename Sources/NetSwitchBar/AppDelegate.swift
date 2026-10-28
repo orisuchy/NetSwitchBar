@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Network
 import NetSwitchCore
+import UserNotifications
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -9,11 +10,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
     private let monitor = NWPathMonitor()
     private var tracker = ConnectionTracker()
+    private let notificationsItem = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
+    private var notificationsOn = UserDefaults.standard.object(forKey: "notificationsOn") as? Bool ?? true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
         menu.addItem(statusLine)
         menu.addItem(.separator())
+        notificationsItem.target = self
+        notificationsItem.state = notificationsOn ? .on : .off
+        menu.addItem(notificationsItem)
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
 
@@ -21,12 +27,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let snapshot = Self.snapshot(from: path)
             Task { @MainActor in self?.apply(snapshot) }
         }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.deliver(self?.tracker.handle(.tick, at: ProcessInfo.processInfo.systemUptime) ?? []) }
+        }
         monitor.start(queue: DispatchQueue(label: "netswitchbar.path"))
     }
 
     private func apply(_ snapshot: NetworkSnapshot) {
-        tracker.handle(.path(snapshot), at: ProcessInfo.processInfo.systemUptime)
+        let alerts = tracker.handle(.path(snapshot), at: ProcessInfo.processInfo.systemUptime)
         render(tracker.displayState)
+        deliver(alerts)
+    }
+
+    @objc private func toggleNotifications() {
+        notificationsOn.toggle()
+        notificationsItem.state = notificationsOn ? .on : .off
+        UserDefaults.standard.set(notificationsOn, forKey: "notificationsOn")
+    }
+
+    private func deliver(_ alerts: [Alert]) {
+        guard notificationsOn else { return }
+        for alert in alerts {
+            let content = UNMutableNotificationContent()
+            content.title = switch alert {
+            case .switched(.wifi): "Switched to Wi-Fi"
+            case .switched(.ethernet): "Back on Ethernet"
+            case .switched(.none), .offline: "Offline"
+            case .backOnline: "Back online"
+            }
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        }
     }
 
     private func render(_ state: DisplayState) {

@@ -1,6 +1,6 @@
 # 02 — Change notifications with settle
 
-**Status:** ready-for-agent
+**Status:** done
 **Model:** sonnet
 
 ## Parent
