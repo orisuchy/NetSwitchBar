@@ -1,7 +1,10 @@
 import AppKit
+import CoreLocation
+import CoreWLAN
 import Foundation
 import Network
 import NetSwitchCore
+import SystemConfiguration
 import UserNotifications
 
 private extension ActiveInterface {
@@ -9,10 +12,14 @@ private extension ActiveInterface {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDelegate, CWEventDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let statusLine = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
+    private let ethernetLine = NSMenuItem(title: "Ethernet: plugged in, not active", action: nil, keyEquivalent: "")
+    private let locationItem = NSMenuItem(title: "Grant Location access to enable per-network icons", action: #selector(openLocationSettings), keyEquivalent: "")
+    private let locationManager = CLLocationManager()
     private let monitor = NWPathMonitor()
+    private var lastPath: (active: ActiveInterface, ethernet: Bool, wifi: Bool)?
     private var tracker = ConnectionTracker()
     private let notificationsItem = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
     private var probeTimer: Timer?
@@ -24,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let menu = NSMenu()
         menu.addItem(statusLine)
+        ethernetLine.isHidden = true
+        menu.addItem(ethernetLine)
+        locationItem.target = self
+        locationItem.isHidden = true
+        menu.addItem(locationItem)
         menu.addItem(.separator())
         notificationsItem.target = self
         notificationsItem.state = notificationsOn ? .on : .off
@@ -32,9 +44,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
 
         monitor.pathUpdateHandler = { [weak self] path in
-            let snapshot = Self.snapshot(from: path)
-            Task { @MainActor in self?.apply(snapshot) }
+            let route = Self.route(from: path)
+            Task { @MainActor in
+                self?.lastPath = route
+                self?.refresh()
+            }
         }
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
+        updateLocationItem()
+        let wifiClient = CWWiFiClient.shared()
+        wifiClient.delegate = self
+        try? wifiClient.startMonitoringEvent(with: .ssidDidChange)
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
         let ticker = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.deliver(self?.tracker.handle(.tick, at: Date().timeIntervalSince1970) ?? []) }
@@ -49,6 +70,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self?.asleep = false; self?.updateProbing() }
         }
         monitor.start(queue: DispatchQueue(label: "netswitchbar.path"))
+    }
+
+    nonisolated func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
+        Task { @MainActor in self.refresh() }
+    }
+
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        Task { @MainActor in
+            self.updateLocationItem()
+            self.refresh()  // the SSID becomes readable once authorized
+        }
+    }
+
+    private func updateLocationItem() {
+        let status = locationManager.authorizationStatus
+        locationItem.isHidden = status != .denied && status != .restricted
+    }
+
+    @objc private func openLocationSettings() {
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices")!)
+    }
+
+    private func refresh() {
+        guard let p = lastPath else { return }
+        // nil without Location authorization; everything else works without it
+        let wifi = CWWiFiClient.shared().interface()
+        let ssid = wifi?.ssid()
+        let associated = p.wifi || ssid != nil || (wifi?.powerOn() == true && (wifi?.transmitRate() ?? 0) > 0)
+        apply(NetworkSnapshot(activeInterface: p.active, ethernetLink: Self.ethernetHasLink(), wifiAssociated: associated, ssid: ssid))
+    }
+
+    /// Real link state: a wired Ethernet interface that is up and running, even with no route over it.
+    private nonisolated static func ethernetHasLink() -> Bool {
+        let names = (SCNetworkInterfaceCopyAll() as? [SCNetworkInterface] ?? []).compactMap { i -> String? in
+            (SCNetworkInterfaceGetInterfaceType(i) as String?) == (kSCNetworkInterfaceTypeEthernet as String) ? SCNetworkInterfaceGetBSDName(i) as String? : nil
+        }
+        var list: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&list) == 0 else { return false }
+        defer { freeifaddrs(list) }
+        let required = UInt32(IFF_UP | IFF_RUNNING)
+        for p in sequence(first: list, next: { $0?.pointee.ifa_next }).compactMap({ $0?.pointee }) {
+            if names.contains(String(cString: p.ifa_name)), p.ifa_flags & required == required { return true }
+        }
+        return false
     }
 
     private func apply(_ snapshot: NetworkSnapshot) {
@@ -107,9 +172,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for alert in alerts {
             let content = UNMutableNotificationContent()
             content.title = switch alert {
-            case .switched(.wifi): "Switched to Wi-Fi"
-            case .switched(.ethernet): "Back on Ethernet"
-            case .switched(.none), .offline: "Offline"
+            case .switched(.wifi, let ssid): ssid.map { "Switched to Wi-Fi: \($0)" } ?? "Switched to Wi-Fi"
+            case .switched(.ethernet, _): "Back on Ethernet"
+            case .switched(.none, _), .offline: "Offline"
             case .backOnline: "Back online"
             case .noInternet(let interface): "Connected via \(interface.label), but no internet"
             case .unstable(let interface, let drops): "\(interface.label) unstable: \(drops) drops in the last minute"
@@ -119,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func render(_ state: DisplayState) {
+        ethernetLine.isHidden = !tracker.ethernetPluggedNotActive
         switch IconResolver.icon(for: state) {
         case .symbol(let name):
             statusItem.button?.image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
@@ -130,16 +196,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.alphaValue = IconResolver.isDimmed(state) ? 0.4 : 1
         statusLine.title = switch state {
         case .ethernet: "Active: Ethernet"
-        case .wifi: "Active: Wi-Fi"
+        case .wifi(let ssid): ssid.map { "Active: Wi-Fi — \($0)" } ?? "Active: Wi-Fi"
         case .offline: "Offline"
         case .noInternet(let interface): "\(interface.label): no internet"
         }
     }
 
-    private nonisolated static func snapshot(from path: NWPath) -> NetworkSnapshot {
-        guard path.status == .satisfied else { return NetworkSnapshot(activeInterface: .none) }
-        let ethernet = path.usesInterfaceType(.wiredEthernet)
-        let wifi = path.usesInterfaceType(.wifi)
+    private nonisolated static func route(from path: NWPath) -> (active: ActiveInterface, ethernet: Bool, wifi: Bool) {
+        guard path.status == .satisfied else { return (.none, false, false) }
         // availableInterfaces is in preference order; take the first one the path actually uses.
         let active: ActiveInterface = path.availableInterfaces.first { path.usesInterfaceType($0.type) }.map {
             switch $0.type {
@@ -148,6 +212,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             default: .none // ponytail: VPN/tethering show as offline until a later ticket gives them an icon
             }
         } ?? .none
-        return NetworkSnapshot(activeInterface: active, ethernetLink: ethernet, wifiAssociated: wifi)
+        return (active, path.usesInterfaceType(.wiredEthernet), path.usesInterfaceType(.wifi))
     }
 }

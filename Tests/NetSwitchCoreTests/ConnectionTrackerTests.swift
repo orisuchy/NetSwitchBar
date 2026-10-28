@@ -221,3 +221,68 @@ private let none = NetworkSnapshot(activeInterface: .none)
         #expect(t.handle(.tick, at: 71) == [.noInternet(.ethernet)])
     }
 }
+
+@Suite struct WifiDetailTests {
+    private func wifi(_ ssid: String?) -> NetworkSnapshot {
+        .init(activeInterface: .wifi, wifiAssociated: true, ssid: ssid)
+    }
+
+    @Test func switchedAlertCarriesSSID() {
+        var t = ConnectionTracker()
+        t.handle(.path(eth), at: 0)
+        t.handle(.path(wifi("Office-5G")), at: 10)
+        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: "Office-5G")])
+    }
+
+    @Test func nilSSIDSwitchStillAlerts() {
+        var t = ConnectionTracker()
+        t.handle(.path(eth), at: 0)
+        t.handle(.path(wifi(nil)), at: 10)
+        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: nil)])
+    }
+
+    @Test func ssidChangeWhileEthernetActiveIsSilent() {
+        var t = ConnectionTracker()
+        let e = { NetworkSnapshot(activeInterface: .ethernet, ethernetLink: true, wifiAssociated: true, ssid: $0) }
+        t.handle(.path(e("A")), at: 0)
+        t.handle(.path(e("B")), at: 10)
+        #expect(t.handle(.tick, at: 20).isEmpty)
+        #expect(t.displayState == .ethernet)
+    }
+
+    @Test func ssidChangeWhileWifiActiveAlertsAfterSettle() {
+        var t = ConnectionTracker()
+        t.handle(.path(wifi("A")), at: 0)
+        t.handle(.path(wifi("B")), at: 10)
+        #expect(t.displayState == .wifi(ssid: "B"))
+        #expect(t.handle(.tick, at: 12.9).isEmpty)
+        #expect(t.handle(.tick, at: 13) == [.switched(to: .wifi, ssid: "B")])
+        #expect(t.handle(.tick, at: 20).isEmpty)
+    }
+
+    @Test func ssidBlipThatRevertsIsSilent() {
+        var t = ConnectionTracker()
+        t.handle(.path(wifi("A")), at: 0)
+        t.handle(.path(wifi("B")), at: 10)
+        t.handle(.path(wifi("A")), at: 11)
+        #expect(t.handle(.tick, at: 20).isEmpty)
+    }
+
+    @Test func ssidAppearingLaterIsSilent() {
+        var t = ConnectionTracker()
+        t.handle(.path(wifi(nil)), at: 0)
+        t.handle(.path(wifi("A")), at: 10)
+        #expect(t.handle(.tick, at: 20).isEmpty)
+        #expect(t.displayState == .wifi(ssid: "A"))
+    }
+
+    @Test func ethernetPluggedButWifiActiveSetsHint() {
+        var t = ConnectionTracker()
+        t.handle(.path(.init(activeInterface: .wifi, ethernetLink: true, wifiAssociated: true)), at: 0)
+        #expect(t.ethernetPluggedNotActive)
+        t.handle(.path(eth), at: 1)
+        #expect(!t.ethernetPluggedNotActive)
+        t.handle(.path(wifi("A")), at: 2)
+        #expect(!t.ethernetPluggedNotActive)
+    }
+}

@@ -32,7 +32,7 @@ public enum DisplayState: Equatable, Sendable {
 }
 
 public enum Alert: Equatable, Sendable {
-    case switched(to: ActiveInterface)
+    case switched(to: ActiveInterface, ssid: String? = nil)
     case offline
     case backOnline
     case noInternet(ActiveInterface)
@@ -50,7 +50,10 @@ public struct ConnectionTracker: Sendable {
     private var noInternet = false
     private var probeFailures = 0
     private var noInternetPending = false  // alert owed; released once settled and not flapping
+    public private(set) var ethernetPluggedNotActive = false
     private var current: ActiveInterface = .none
+    private var currentSSID: String?  // only tracked while Wi-Fi is the active route
+    private var announcedSSID: String?
     private var announced: ActiveInterface?  // nil until the first path, so launch never alerts
     private var heldSince = 0.0
     private var drops: [(interface: ActiveInterface, time: Double)] = []
@@ -66,7 +69,16 @@ public struct ConnectionTracker: Sendable {
             case .wifi: base = .wifi(ssid: snapshot.ssid)
             case .none: base = .offline
             }
+            ethernetPluggedNotActive = snapshot.ethernetLink && snapshot.activeInterface != .ethernet
+            let ssid = snapshot.activeInterface == .wifi ? snapshot.ssid : nil
+            if snapshot.activeInterface == current, current == .wifi, ssid != currentSSID {
+                // a vanished or newly readable SSID is not a network change; only name-to-name is
+                if ssid != nil, let known = announcedSSID, ssid != known { heldSince = time }
+                else if announcedSSID == nil { announcedSSID = ssid }
+                currentSSID = ssid
+            }
             if snapshot.activeInterface != current || announced == nil {
+                currentSSID = ssid
                 noInternet = false
                 noInternetPending = false  // the new path gets probed afresh
                 probeFailures = 0
@@ -91,6 +103,7 @@ public struct ConnectionTracker: Sendable {
         }
         guard let last = announced else {
             announced = current
+            announcedSSID = currentSSID
             return []
         }
         drops.removeAll { time - $0.time > Self.flapWindowSeconds }
@@ -107,17 +120,19 @@ public struct ConnectionTracker: Sendable {
                 return [.unstable(interface, drops: count)]
             }
         }
-        guard current != last else {
+        let ssidChanged = current == .wifi && last == .wifi && currentSSID != nil && announcedSSID != nil && currentSSID != announcedSSID
+        guard current != last || ssidChanged else {
             guard noInternetPending else { return [] }
             noInternetPending = false
             return [.noInternet(current)]
         }
         guard time - heldSince >= Self.settleSeconds else { return [] }
         announced = current
+        announcedSSID = currentSSID
         switch (last, current) {
         case (_, .none): return [.offline]
         case (.none, _): return [.backOnline]
-        default: return [.switched(to: current)]
+        default: return [.switched(to: current, ssid: currentSSID)]
         }
     }
 }

@@ -10,7 +10,7 @@
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
-    <key>NSLocationUsageDescription</key><string>NetSwitchBar reads the Wi-Fi network name, which macOS only allows with Location access. Location is never stored or sent.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>NetSwitchBar reads the Wi-Fi network name, which macOS only allows with Location access. Location is never stored or sent.</string>
+    <key>NSLocationUsageDescription</key><string>Needed only to read the Wi-Fi network name for custom icons. Location is never stored or sent.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Needed only to read the Wi-Fi network name for custom icons. Location is never stored or sent.</string>
 </dict>
 </plist>
