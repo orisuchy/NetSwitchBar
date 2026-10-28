@@ -4,6 +4,7 @@ import CoreWLAN
 import Foundation
 import Network
 import NetSwitchCore
+import ServiceManagement
 import SystemConfiguration
 import UserNotifications
 
@@ -38,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
     private var ssid: String?
     private var previewLabel: NSTextField?
     private let notificationsItem = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
+    private let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
     private var probeTimer: Timer?
     private var asleep = false
     private var routeUp = false
@@ -59,8 +61,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         notificationsItem.target = self
         notificationsItem.state = notificationsOn ? .on : .off
         menu.addItem(notificationsItem)
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.addItem(launchAtLoginItem)
         menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
+        Task { @MainActor in self.showFirstLaunchHintOnce() }
 
         monitor.pathUpdateHandler = { [weak self] path in
             let route = Self.route(from: path)
@@ -187,6 +193,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, CLLocationManagerDeleg
         notificationsOn.toggle()
         notificationsItem.state = notificationsOn ? .on : .off
         UserDefaults.standard.set(notificationsOn, forKey: "notificationsOn")
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        let service = SMAppService.mainApp
+        do {
+            if service.status == .enabled { try service.unregister() } else { try service.register() }
+        } catch {
+            NSLog("Launch at Login change failed: \(error.localizedDescription)")
+        }
+        launchAtLoginItem.state = service.status == .enabled ? .on : .off  // show what macOS actually did
+    }
+
+    private func showFirstLaunchHintOnce() {
+        let key = "shownFirstLaunchHint"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)  // set before showing so it never repeats
+        let alert = NSAlert()
+        alert.messageText = "Hide the system Wi-Fi icon"
+        alert.informativeText = "NetSwitchBar shows its own icon for your connection. To avoid a second Wi-Fi icon, go to System Settings → Control Center → Wi-Fi and choose “Don't Show in Menu Bar”."
+        alert.addButton(withTitle: "OK")
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     @objc private func setIcon() {
